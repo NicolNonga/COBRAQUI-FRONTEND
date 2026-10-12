@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  /* Marca Cobraqui: azul (confiança) + amarelo/laranja (acento) — cores do logótipo */
+  --color-brand-50: #eef7fe;
+  --color-brand-100: #d8ecfc;
+  --color-brand-200: #b4dbfa;
+  --color-brand-300: #82c3f5;
+  --color-brand-400: #4fb3ee;
+  --color-brand-500: #2290e3;
+  --color-brand-600: #1580d8;
+  --color-brand-700: #1263ab;
+  --color-brand-800: #14528a;
+  --color-brand-900: #0f2c4d;
+
+  --color-accent-50: #fff8e6;
+  --color-accent-100: #ffefbf;
+  --color-accent-300: #ffe07a;
+  --color-accent-400: #ffd84d;
+  --color-accent-500: #f6ae3c;
+  --color-accent-600: #e0911f;
+  --color-accent-700: #b86f12;
+
+  --color-ink-950: #0a0d1a;
+  --color-ink-900: #111527;
+  --color-ink-800: #1d2236;
+
+  --color-success-50: #ecfdf3;
+  --color-success-500: #12b76a;
+  --color-success-600: #039855;
+  --color-success-700: #027a48;
+  --color-warning-50: #fffaeb;
+  --color-warning-500: #f79009;
+  --color-warning-600: #dc6803;
+  --color-warning-700: #b54708;
+  --color-danger-50: #fef3f2;
+  --color-danger-500: #f04438;
+  --color-danger-600: #d92d20;
+  --color-danger-700: #b42318;
+
+  --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.04);
+  --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.06);
+  --shadow-focus: 0 0 0 4px rgb(21 128 216 / 0.18);
+
+  --animate-fade-in: fade-in 0.18s ease-out;
+  --animate-slide-up: slide-up 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-left: slide-left 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes slide-up { from { opacity: 0; transform: translateY(8px) scale(0.98) } to { opacity: 1; transform: none } }
+  @keyframes slide-left { from { transform: translateX(100%) } to { transform: none } }
+}
+
+:root {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --border: #e9eaf0;
+  --text: #101828;
+  --muted: #667085;
+  --soft: #f2f4f7;
+  --subtle: #fafbfc;
+  color-scheme: light;
+}
+.dark {
+  --bg: #0b0e17;
+  --surface: #121624;
+  --border: #23293b;
+  --text: #f2f4f7;
+  --muted: #98a2b3;
+  --soft: #1b2133;
+  --subtle: #0f1320;
+  color-scheme: dark;
+}
+
+@layer base {
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-feature-settings: "cv11", "ss01", "tnum";
+    -webkit-font-smoothing: antialiased;
+  }
+  * { border-color: var(--border); }
+  ::selection { background: var(--color-brand-100); color: var(--color-brand-900); }
+}
+
+@utility surface { background: var(--surface); }
+@utility text-muted { color: var(--muted); }
+@utility border-base { border-color: var(--border); }
+@utility bg-soft { background: var(--soft); }
+@utility bg-subtle { background: var(--subtle); }
+@utility tabular { font-variant-numeric: tabular-nums; }
+
+/* Scrollbars discretas */
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: rgb(152 162 179 / 0.35); border-radius: 8px; }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, rgb(152 162 179 / 0.12) 25%, rgb(152 162 179 / 0.22) 37%, rgb(152 162 179 / 0.12) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+@keyframes shimmer { 0% { background-position: 100% 50% } 100% { background-position: 0 50% } }
+@keyframes table-progress { 0% { transform: translateX(-100%) } 100% { transform: translateX(300%) } }
