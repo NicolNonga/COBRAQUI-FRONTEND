@@ -26,6 +26,8 @@ export const P = {
   POLICY_MANAGE: "collection_policy_manage_permission",
   USER_VIEW: "user_view_permission",
   USER_CREATE: "user_create_permission",
+  USER_PERMISSIONS_MANAGE: "user_permissions_manage_permission",
+  AGENTS_VIEW_ALL: "agents_view_all_permission",
   ROLE_VIEW: "role_view_permission",
   ROLE_MANAGE: "role_manage_permission",
   CATALOG_MANAGE: "catalog_manage_permission",

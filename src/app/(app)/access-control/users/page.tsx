@@ -1,20 +1,21 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { KeyRound, MoreHorizontal, Pencil, Plus, Power, UserCog } from "lucide-react";
+import { KeyRound, MoreHorizontal, Pencil, Plus, Power, ShieldPlus, UserCog } from "lucide-react";
 import { Avatar, Badge, PageHeader } from "@/components/ui/display";
 import { Button } from "@/components/ui/button";
-import { Field, Input, SearchInput, Select } from "@/components/ui/form";
+import { Checkbox, Field, Input, SearchInput, Select } from "@/components/ui/form";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { ConfirmDialog, Drawer, Dropdown, MenuItem, MenuSeparator } from "@/components/ui/overlay";
 import { useToast } from "@/components/ui/toast";
 import { ActiveBadge } from "@/components/shared/status";
 import { ErrorBanner } from "@/components/shared/process-list";
-import { displayName } from "@/components/shared/auth-provider";
+import { displayName, useAuth } from "@/components/shared/auth-provider";
 import { useListState, useQuery } from "@/hooks/use-query";
-import { catalogService, organizationService, roleService, userService } from "@/lib/api/services";
+import { catalogService, organizationService, permissionService, roleService, userService } from "@/lib/api/services";
 import { errorMessage } from "@/lib/api/http";
-import type { Category, Role, User, UserRef } from "@/types/models";
+import { P } from "@/lib/permissions";
+import type { Category, PermissionGroup, Role, User, UserRef } from "@/types/models";
 import { formatDate } from "@/lib/utils";
 
 export default function UsersPage() {
@@ -28,6 +29,8 @@ export default function UsersPage() {
   const [open, setOpen] = useState(false);
   const [toggling, setToggling] = useState<User | null>(null);
   const [resetting, setResetting] = useState<User | null>(null);
+  const [granting, setGranting] = useState<User | null>(null);
+  const { can } = useAuth();
   const { data: roles } = useQuery(() => roleService.dropdown().catch(() => [] as Role[]));
 
   useEffect(() => { if (params.get("new")) { setEditing(null); setOpen(true); } }, [params]);
@@ -47,6 +50,7 @@ export default function UsersPage() {
       key: "a", header: "", align: "right", cell: (u) => (
         <Dropdown trigger={<Button variant="ghost" size="icon-sm"><MoreHorizontal className="h-4 w-4" /></Button>}>
           <MenuItem icon={<Pencil />} onClick={() => { setEditing(u); setOpen(true); }}>Editar</MenuItem>
+          {can(P.USER_PERMISSIONS_MANAGE) && <MenuItem icon={<ShieldPlus />} onClick={() => setGranting(u)}>Permissões individuais</MenuItem>}
           <MenuItem icon={<KeyRound />} onClick={() => setResetting(u)}>Repor palavra-passe</MenuItem>
           <MenuSeparator />
           <MenuItem icon={<Power />} danger={u.isActive} onClick={() => setToggling(u)}>{u.isActive ? "Desactivar" : "Activar"}</MenuItem>
@@ -72,6 +76,7 @@ export default function UsersPage() {
         empty={{ title: "Nenhum utilizador", icon: <UserCog /> }} />
 
       <UserDrawer open={open} user={editing} roles={roles ?? []} onClose={() => { setOpen(false); if (params.get("new")) router.replace("/access-control/users"); }} onSaved={reload} />
+      <UserPermissionsDrawer user={granting} onClose={() => setGranting(null)} onSaved={reload} />
       <ConfirmDialog open={!!toggling} onClose={() => setToggling(null)} tone={toggling?.isActive ? "danger" : "primary"}
         title={toggling?.isActive ? "Desactivar utilizador?" : "Activar utilizador?"}
         description={toggling?.isActive ? <><b>{displayName(toggling)}</b> perde imediatamente o acesso à plataforma.</> : <><b>{displayName(toggling)}</b> volta a ter acesso.</>}
@@ -160,6 +165,70 @@ function UserDrawer({ open, user, roles, onClose, onSaved }: { open: boolean; us
           )}
         </>}
       </form>
+    </Drawer>
+  );
+}
+
+/** Permissões dadas só a este utilizador; somam-se às do perfil (que aparecem bloqueadas). */
+function UserPermissionsDrawer({ user, onClose, onSaved }: { user: User | null; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const { user: me } = useAuth();
+  const [groups, setGroups] = useState<PermissionGroup[]>([]);
+  const [fromRole, setFromRole] = useState<Set<string>>(new Set());
+  const [granted, setGranted] = useState<Set<string>>(new Set());
+  const [roleName, setRoleName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const mine = new Set(me?.permissions ?? []);
+  const self = !!user && me?.id === user.id;
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    Promise.all([permissionService.grouped(), userService.permissions(user.id)])
+      .then(([g, p]) => { setGroups(g); setFromRole(new Set(p.fromRole)); setGranted(new Set(p.granted)); setRoleName(p.role?.name ?? null); })
+      .catch((e) => toast("error", "Não foi possível carregar", errorMessage(e)))
+      .finally(() => setLoading(false));
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggle = (slug: string, on: boolean) => setGranted((s) => { const n = new Set(s); if (on) n.add(slug); else n.delete(slug); return n; });
+
+  async function save() {
+    if (!user) return;
+    setSaving(true);
+    try { const r = await userService.setPermissions(user.id, [...granted]); toast("success", r.message); onSaved(); onClose(); }
+    catch (e) { toast("error", "Não foi possível guardar", errorMessage(e)); } finally { setSaving(false); }
+  }
+
+  return (
+    <Drawer open={!!user} onClose={onClose} title="Permissões individuais" description={user ? `${displayName(user)} · perfil ${roleName ?? "—"}` : undefined} width="max-w-2xl"
+      footer={<><Button variant="secondary" onClick={onClose}>Cancelar</Button><Button onClick={save} loading={saving} disabled={loading || self}>Guardar</Button></>}>
+      <p className="mb-4 text-sm text-muted">
+        Estas permissões somam-se às do perfil e valem só para este utilizador. Para ver os dados de outros agentes, dê <b>“Ver dados de todos os agentes”</b>.
+        Só pode dar o que você próprio tem{self ? "; e não pode alterar as suas próprias permissões" : ""}.
+      </p>
+      {loading ? <p className="text-sm text-muted">A carregar…</p> : (
+        <div className="space-y-5">
+          {groups.map((g) => (
+            <section key={g.group}>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{g.group}</h4>
+              <ul className="space-y-1">
+                {g.permissions.map((p) => {
+                  const viaRole = fromRole.has(p.slug);
+                  const cannotGive = !viaRole && !granted.has(p.slug) && !mine.has(p.slug);
+                  return (
+                    <li key={p.slug} className="rounded-lg px-2 py-1.5 hover:bg-[var(--surface-2,transparent)]">
+                      <Checkbox checked={viaRole || granted.has(p.slug)} disabled={viaRole || cannotGive || self} onChange={(v) => toggle(p.slug, v)}
+                        label={<span><span className="font-medium">{p.name}</span>{viaRole && <Badge className="ml-2">do perfil</Badge>}{cannotGive && <span className="ml-2 text-xs text-muted">(não a tem)</span>}
+                          {p.description && <span className="block text-xs text-muted">{p.description}</span>}</span>} />
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
     </Drawer>
   );
 }

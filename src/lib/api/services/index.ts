@@ -25,6 +25,7 @@ export const authService = {
 };
 
 /* ───────────────────────────── Utilizadores e equipa ───────────────────────────── */
+export interface UserPermissions { userId: number; role: { id: number; name: string; isActive: boolean } | null; fromRole: string[]; granted: string[] }
 export interface UserPayload { fullName?: string | null; email: string; phone_number?: string; roleId: number; categorie_id?: number; organizationId?: number; managerId?: number }
 export const userService = {
   list: (p: ListParams & { roleId?: number; organizationId?: number; categoryId?: number; isActive?: boolean }) => http.get<Paginated<User>>("users", q(p)),
@@ -36,6 +37,9 @@ export const userService = {
   adminResetPassword: (id: number) => http.put<Msg>(`users/${id}/redefinar_senha`),
   myAgents: () => http.get<User[]>("user_wallet/list_agents_by_Manger"),
   myAgentsPaged: (p: ListParams) => http.get<Paginated<User>>("user_wallet/manager", q(p)),
+  /** permissões do perfil + as dadas só a este utilizador */
+  permissions: (id: number) => http.get<Data<UserPermissions>>(`users/${id}/permissions`).then(unwrap),
+  setPermissions: (id: number, permissions: string[]) => http.put<Msg & { data: { added: string[]; removed: string[] } }>(`users/${id}/permissions`, { permissions }),
 };
 
 /* ───────────────────────────── Perfis e permissões ───────────────────────────── */
